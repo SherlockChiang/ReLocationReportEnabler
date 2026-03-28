@@ -26,12 +26,17 @@ android {
             }
             */
             cmake {
-                cppFlags("-std=c++20")
-                arguments(
-                    "-DANDROID_STL=none",
-                    "-DMODULE_NAME=$moduleId"
-                )
-            }
+            cppFlags(
+                "-std=c++20",
+                "-fno-exceptions",           
+                "-fno-rtti",                
+                "-fno-threadsafe-statics"    
+            )
+            arguments(
+                "-DANDROID_STL=none", 
+                "-DMODULE_NAME=$moduleId"
+            )
+        }
         }
     }
     externalNativeBuild {

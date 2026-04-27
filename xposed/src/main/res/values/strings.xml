@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Timeline Unlocker (Xposed)</string>
+    <string name="xposed_description">Spoof telephony country/operator for GMS to unlock Location History/Timeline.</string>
+</resources>

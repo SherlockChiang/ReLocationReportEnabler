@@ -26,14 +26,9 @@ android {
             }
             */
             cmake {
-            cppFlags(
-                "-std=c++20",
-                "-fno-exceptions",           
-                "-fno-rtti",                
-                "-fno-threadsafe-statics"    
-            )
+            cppFlags("-std=c++20") 
             arguments(
-                "-DANDROID_STL=none", 
+                "-DANDROID_STL=c++_static",
                 "-DMODULE_NAME=$moduleId"
             )
         }

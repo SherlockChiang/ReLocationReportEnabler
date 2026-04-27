@@ -19,8 +19,8 @@ val gitCommitCount = "git rev-list HEAD --count".execute().toInt()
 val gitCommitHash = "git rev-parse --verify --short HEAD".execute()
 
 // also the soname
-val moduleId by extra("sample")
-val moduleName by extra("Zygisk Module Sample")
+val moduleId by extra("relocation_report_enabler")
+val moduleName by extra("GMS Timeline Unlocker")
 val verName by extra("v1")
 val verCode by extra(gitCommitCount)
 val commitHash by extra(gitCommitHash)

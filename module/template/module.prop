@@ -1,7 +1,0 @@
-id=${moduleId}
-name=${moduleName}
-version=${versionName}
-versionCode=${versionCode}
-author=5ec1cff, 92
-description=Enable GMS timeline with zygisk
-#updateJson=

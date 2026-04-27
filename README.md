@@ -37,11 +37,17 @@ Other property reads pass through unchanged.
 3. Confirm the scope includes the three Google packages above.
 4. Force-stop GMS and Maps (or reboot). Open Maps &rarr; Timeline.
 
-## Caveat
+## GCJ-02 offset compensation
 
-Once active in `com.google.android.apps.maps`, Maps stops applying the
-WGS-84 &rarr; GCJ-02 transformation, so your live-location dot will be
-offset from the map tiles when you are physically in mainland China.
-This is the cost of spoofing the device country: there is no clean way
-to keep Timeline gating happy while letting the map renderer think you
-are still in China inside the same process.
+Spoofing country to `us` in `com.google.android.apps.maps` makes Maps stop
+applying its built-in WGS-84 &rarr; GCJ-02 conversion, so the live location
+dot drifts off the China map tiles by a few hundred meters.
+
+To compensate, the Maps process additionally hooks
+`Location.getLatitude()` / `Location.getLongitude()` and applies the public
+WGS-84 &rarr; GCJ-02 transform when the coordinate falls inside the China
+bounding box. The dot then realigns with the GCJ-02 tiles.
+
+This compensation is **only** installed in `com.google.android.apps.maps`;
+GMS / GSF still see the original WGS-84 values, which is what Location
+History upload expects.

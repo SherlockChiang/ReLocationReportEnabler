@@ -1,6 +1,9 @@
 package io.github.timeline_unlocker.xposed;
 
+import android.location.Location;
+
 import de.robv.android.xposed.IXposedHookLoadPackage;
+import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
@@ -31,6 +34,65 @@ public class MainHook implements IXposedHookLoadPackage {
         ClassLoader cl = lpparam.classLoader;
         hookTelephonyManager(cl);
         hookSystemProperties(cl);
+
+        // 只在 Maps 进程里给 Location 做 WGS-84 -> GCJ-02 转换，
+        // 修正"Maps 把国家当成 us 不再做坐标偏移"造成的小蓝点偏移。
+        // GMS / GSF 不应用此转换，它们的位置上传链路使用真实 WGS-84。
+        if ("com.google.android.apps.maps".equals(pkg)) {
+            hookLocationGcj02();
+        }
+    }
+
+    /**
+     * 在 Maps 进程里把 Location 的 lat/lng 透明转成 GCJ-02。
+     * 用 thread-local 守卫避免 getLatitude/getLongitude 互相递归。
+     */
+    private void hookLocationGcj02() {
+        final ThreadLocal<Boolean> inHook = new ThreadLocal<>();
+
+        XC_MethodHook latHook = new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                if (Boolean.TRUE.equals(inHook.get())) return;
+                inHook.set(Boolean.TRUE);
+                try {
+                    Location loc = (Location) param.thisObject;
+                    double lat = (Double) param.getResult();
+                    double lng = loc.getLongitude();
+                    if (CoordTransform.isInChina(lat, lng)) {
+                        param.setResult(CoordTransform.wgs84ToGcj02(lat, lng)[0]);
+                    }
+                } finally {
+                    inHook.set(Boolean.FALSE);
+                }
+            }
+        };
+
+        XC_MethodHook lngHook = new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                if (Boolean.TRUE.equals(inHook.get())) return;
+                inHook.set(Boolean.TRUE);
+                try {
+                    Location loc = (Location) param.thisObject;
+                    double lng = (Double) param.getResult();
+                    double lat = loc.getLatitude();
+                    if (CoordTransform.isInChina(lat, lng)) {
+                        param.setResult(CoordTransform.wgs84ToGcj02(lat, lng)[1]);
+                    }
+                } finally {
+                    inHook.set(Boolean.FALSE);
+                }
+            }
+        };
+
+        try {
+            XposedHelpers.findAndHookMethod(Location.class, "getLatitude", latHook);
+            XposedHelpers.findAndHookMethod(Location.class, "getLongitude", lngHook);
+            log("Location GCJ-02 transform hooks installed");
+        } catch (Throwable t) {
+            log("hook Location lat/lng failed: %s", t);
+        }
     }
 
     private static XC_MethodReplacement constReplacement(final Object value, final String methodTag) {

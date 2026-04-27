@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git submodule *)",
+      "Bash(git rm *)",
+      "Bash(./gradlew :xposed:tasks --quiet)"
+    ]
+  }
+}

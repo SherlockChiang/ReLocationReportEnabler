@@ -1,16 +1,47 @@
-# Zygisk Module Template
+# Timeline Unlocker (LSPosed Module)
 
-An Zygisk Module Template based on zygisk-module-sample. Both cmake and ndk-build are supported.
+An LSPosed (Xposed) module that spoofs telephony country/operator inside Google
+Play Services and Google Maps so that GMS Location History / Timeline can be
+enabled on devices whose SIM is registered in a region where Google has
+restricted the feature.
 
-## Usage
+## Scope
 
-1. Edit your moduleId in [build.gradle.kts](./build.gradle.kts) (It's also your module's soname).  
-2. Edit other module info in build.gradle.kts or module/template/module.prop.  
-3. Write your code in module/src/main/cpp .  
-4. Run gradle task `:zipDebug` or `:zipRelease` to build the module. 
-   Your module zip will be generated under `module/release`. 
-5. Run gradle task `:install(Magisk|Ksu)[AndReboot](Debug|Release)` to flash your module (optional).  
+The module only loads in:
 
-## See also
+- `com.google.android.gms`
+- `com.google.android.gsf`
+- `com.google.android.apps.maps`
 
-https://github.com/topjohnwu/zygisk-module-sample
+In those processes it returns fake values for:
+
+- `TelephonyManager.getSimCountryIso{,ForPhone}` &rarr; `us`
+- `TelephonyManager.getNetworkCountryIso{,ForPhone}` &rarr; `us`
+- `TelephonyManager.getSimOperator{,Numeric,ForPhone}` &rarr; `310030`
+- `TelephonyManager.getNetworkOperator{,Numeric,ForPhone}` &rarr; `310030`
+- `SystemProperties.get(...)` for `gsm.(sim.)?operator.(numeric|iso-country)`
+
+Other property reads pass through unchanged.
+
+## Build
+
+```bash
+./gradlew :xposed:assembleDebug
+# output: xposed/build/outputs/apk/debug/xposed-debug.apk
+```
+
+## Install
+
+1. Install the APK with `adb install` (or any installer).
+2. In LSPosed manager, enable **Timeline Unlocker (Xposed)**.
+3. Confirm the scope includes the three Google packages above.
+4. Force-stop GMS and Maps (or reboot). Open Maps &rarr; Timeline.
+
+## Caveat
+
+Once active in `com.google.android.apps.maps`, Maps stops applying the
+WGS-84 &rarr; GCJ-02 transformation, so your live-location dot will be
+offset from the map tiles when you are physically in mainland China.
+This is the cost of spoofing the device country: there is no clean way
+to keep Timeline gating happy while letting the map renderer think you
+are still in China inside the same process.

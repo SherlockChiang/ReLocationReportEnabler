@@ -15,8 +15,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Sample"
+rootProject.name = "TimelineUnlocker"
 include(
-    ":module",
     ":xposed"
 )

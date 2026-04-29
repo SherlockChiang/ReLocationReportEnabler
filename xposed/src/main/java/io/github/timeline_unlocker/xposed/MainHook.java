@@ -40,6 +40,52 @@ public class MainHook implements IXposedHookLoadPackage {
         // GMS / GSF 不应用此转换，它们的位置上传链路使用真实 WGS-84。
         if ("com.google.android.apps.maps".equals(pkg)) {
             hookLocationGcj02();
+            hookSemanticLocationPoint(cl);
+        }
+    }
+
+    /**
+     * 修 Timeline 历史点偏移：hook GMS SemanticLocation 的 PlaceCandidate$Point
+     * 构造函数。Maps 反序列化 Timeline 数据（Visit / Activity 起终点）时都走它。
+     *
+     * 字段约定：lat/lng 以 latitudeE7 (int = double * 1e7) 表示。
+     * 我们把 int 转成 double，做 WGS-84 -> GCJ-02，再放回 int。
+     *
+     * 这条路径只承载 Timeline 的 Visit/Activity 数据，所以不会污染
+     * POI / Marker / 路线规划等其他用 LatLng 的地方。
+     */
+    private void hookSemanticLocationPoint(ClassLoader cl) {
+        Class<?> point;
+        try {
+            point = XposedHelpers.findClass(
+                    "com.google.android.gms.semanticlocation.PlaceCandidate$Point", cl);
+        } catch (Throwable t) {
+            log("PlaceCandidate$Point not found: %s", t);
+            return;
+        }
+
+        XC_MethodHook ctorHook = new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                Object[] args = param.args;
+                if (args.length < 2) return;
+                if (!(args[0] instanceof Integer) || !(args[1] instanceof Integer)) return;
+                int latE7 = (Integer) args[0];
+                int lngE7 = (Integer) args[1];
+                double lat = latE7 / 1e7;
+                double lng = lngE7 / 1e7;
+                if (!CoordTransform.isInChina(lat, lng)) return;
+                double[] gcj = CoordTransform.wgs84ToGcj02(lat, lng);
+                args[0] = (int) Math.round(gcj[0] * 1e7);
+                args[1] = (int) Math.round(gcj[1] * 1e7);
+            }
+        };
+
+        try {
+            int n = XposedBridge.hookAllConstructors(point, ctorHook).size();
+            log("PlaceCandidate$Point GCJ-02 transform installed (%d ctor)", n);
+        } catch (Throwable t) {
+            log("hook PlaceCandidate$Point failed: %s", t);
         }
     }
 

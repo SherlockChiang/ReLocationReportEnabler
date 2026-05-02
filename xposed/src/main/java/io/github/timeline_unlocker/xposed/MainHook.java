@@ -14,6 +14,8 @@ public class MainHook implements IXposedHookLoadPackage {
     private static final String TAG = "TimelineUnlocker-X";
 
     private static final String FAKE_MCC_MNC = "310030";
+    private static final int FAKE_MCC = 310;
+    private static final int FAKE_MNC = 30;
     private static final String FAKE_ISO = "us";
 
     private static void log(String fmt, Object... args) {
@@ -33,6 +35,7 @@ public class MainHook implements IXposedHookLoadPackage {
 
         ClassLoader cl = lpparam.classLoader;
         hookTelephonyManager(cl);
+        hookSubscriptionInfo(cl);
         hookSystemProperties(cl);
 
         // 只在 Maps 进程里给 Location 做 WGS-84 -> GCJ-02 转换，
@@ -179,7 +182,23 @@ public class MainHook implements IXposedHookLoadPackage {
         hookAllReturning(tm, "getNetworkCountryIsoForPhone", FAKE_ISO);
     }
 
-    private void hookAllReturning(Class<?> clazz, String name, String value) {
+    private void hookSubscriptionInfo(ClassLoader cl) {
+        Class<?> subInfo;
+        try {
+            subInfo = XposedHelpers.findClass("android.telephony.SubscriptionInfo", cl);
+        } catch (Throwable t) {
+            log("SubscriptionInfo not found: %s", t);
+            return;
+        }
+
+        hookAllReturning(subInfo, "getCountryIso", FAKE_ISO);
+        hookAllReturning(subInfo, "getMccString", "310");
+        hookAllReturning(subInfo, "getMncString", "030");
+        hookAllReturning(subInfo, "getMcc", FAKE_MCC);
+        hookAllReturning(subInfo, "getMnc", FAKE_MNC);
+    }
+
+    private void hookAllReturning(Class<?> clazz, String name, Object value) {
         try {
             int hooked = XposedBridge.hookAllMethods(clazz, name, constReplacement(value, name)).size();
             if (hooked > 0) {

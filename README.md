@@ -19,6 +19,9 @@ In those processes it returns fake values for:
 - `TelephonyManager.getNetworkCountryIso{,ForPhone}` &rarr; `us`
 - `TelephonyManager.getSimOperator{,Numeric,ForPhone}` &rarr; `310030`
 - `TelephonyManager.getNetworkOperator{,Numeric,ForPhone}` &rarr; `310030`
+- `SubscriptionInfo.getCountryIso()` &rarr; `us`
+- `SubscriptionInfo.getMcc{,String}()` &rarr; `310`
+- `SubscriptionInfo.getMnc{,String}()` &rarr; `30` / `030`
 - `SystemProperties.get(...)` for `gsm.(sim.)?operator.(numeric|iso-country)`
 
 Other property reads pass through unchanged.
@@ -35,7 +38,7 @@ Other property reads pass through unchanged.
 1. Install the APK with `adb install` (or any installer).
 2. In LSPosed manager, enable **Timeline Unlocker (Xposed)**.
 3. Confirm the scope includes the three Google packages above.
-4. Force-stop GMS and Maps (or reboot). Open Maps &rarr; Timeline.
+4. Force-stop GMS, Maps, and GSF (or reboot). Open Maps &rarr; Timeline.
 
 ## GCJ-02 offset compensation
 

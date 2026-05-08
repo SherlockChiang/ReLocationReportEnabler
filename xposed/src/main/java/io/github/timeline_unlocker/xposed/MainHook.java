@@ -148,12 +148,6 @@ public class MainHook implements IXposedHookLoadPackage {
         return new XC_MethodReplacement() {
             @Override
             protected Object replaceHookedMethod(MethodHookParam param) {
-                Object[] args = param.args;
-                if (args != null && args.length > 0) {
-                    log("%s(args[0]=%s) -> %s", methodTag, String.valueOf(args[0]), value);
-                } else {
-                    log("%s() -> %s", methodTag, value);
-                }
                 return value;
             }
         };
@@ -230,7 +224,6 @@ public class MainHook implements IXposedHookLoadPackage {
                         param.method, param.thisObject, param.args);
                 String fake = fakeFor(key);
                 if (fake != null) {
-                    log("SystemProperties.get(%s) %s -> %s", key, original, fake);
                     return fake;
                 }
                 return original == null ? def : original;

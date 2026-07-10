@@ -4,6 +4,16 @@ plugins {
 
 val verName: String by rootProject.extra
 val verCode: Int by rootProject.extra
+val releaseStoreFile = providers.environmentVariable("RELEASE_STORE_FILE").orNull
+val releaseStorePassword = providers.environmentVariable("RELEASE_STORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("RELEASE_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("RELEASE_KEY_PASSWORD").orNull
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
 
 android {
     namespace = "io.github.timeline_unlocker.xposed"
@@ -17,10 +27,21 @@ android {
         versionName = verName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 

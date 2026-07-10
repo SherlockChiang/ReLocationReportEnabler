@@ -33,6 +33,20 @@ Other property reads pass through unchanged.
 # output: xposed/build/outputs/apk/debug/xposed-debug.apk
 ```
 
+Release builds never use the Android debug key. Configure all four environment
+variables to produce a signed release APK:
+
+```text
+RELEASE_STORE_FILE
+RELEASE_STORE_PASSWORD
+RELEASE_KEY_ALIAS
+RELEASE_KEY_PASSWORD
+```
+
+Without those variables, `assembleRelease` produces an unsigned APK suitable
+for build verification only. Keep the release keystore and its passwords out
+of the repository.
+
 ## Install
 
 1. Install the APK with `adb install` (or any installer).

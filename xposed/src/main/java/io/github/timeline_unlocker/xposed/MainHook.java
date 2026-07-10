@@ -2,6 +2,8 @@ package io.github.timeline_unlocker.xposed;
 
 import android.location.Location;
 
+import java.lang.reflect.Method;
+
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
@@ -75,6 +77,10 @@ public class MainHook implements IXposedHookLoadPackage {
                 if (!(args[0] instanceof Integer) || !(args[1] instanceof Integer)) return;
                 int latE7 = (Integer) args[0];
                 int lngE7 = (Integer) args[1];
+                if (latE7 < -900_000_000 || latE7 > 900_000_000
+                        || lngE7 < -1_800_000_000 || lngE7 > 1_800_000_000) {
+                    return;
+                }
                 double lat = latE7 / 1e7;
                 double lng = lngE7 / 1e7;
                 if (!CoordTransform.isInChina(lat, lng)) return;
@@ -167,7 +173,7 @@ public class MainHook implements IXposedHookLoadPackage {
         }
     }
 
-    private static XC_MethodReplacement constReplacement(final Object value, final String methodTag) {
+    private static XC_MethodReplacement constReplacement(final Object value) {
         return new XC_MethodReplacement() {
             @Override
             protected Object replaceHookedMethod(MethodHookParam param) {
@@ -217,7 +223,13 @@ public class MainHook implements IXposedHookLoadPackage {
 
     private void hookAllReturning(Class<?> clazz, String name, Object value) {
         try {
-            int hooked = XposedBridge.hookAllMethods(clazz, name, constReplacement(value, name)).size();
+            int hooked = 0;
+            for (Method method : clazz.getDeclaredMethods()) {
+                if (method.getName().equals(name) && canReturn(method.getReturnType(), value)) {
+                    XposedBridge.hookMethod(method, constReplacement(value));
+                    hooked++;
+                }
+            }
             if (hooked > 0) {
                 log("hooked %d overload(s) of %s.%s -> %s",
                         hooked, clazz.getSimpleName(), name, value);
@@ -225,6 +237,13 @@ public class MainHook implements IXposedHookLoadPackage {
         } catch (Throwable t) {
             // 没这个方法就跳过
         }
+    }
+
+    private static boolean canReturn(Class<?> returnType, Object value) {
+        if (returnType.isInstance(value)) return true;
+        return (returnType == int.class && value instanceof Integer)
+                || (returnType == long.class && value instanceof Long)
+                || (returnType == boolean.class && value instanceof Boolean);
     }
 
     private void hookSystemProperties(ClassLoader cl) {
@@ -243,12 +262,12 @@ public class MainHook implements IXposedHookLoadPackage {
             protected Object replaceHookedMethod(MethodHookParam param) throws Throwable {
                 String key = (String) param.args[0];
                 String def = param.args.length > 1 ? (String) param.args[1] : "";
-                String original = (String) XposedBridge.invokeOriginalMethod(
-                        param.method, param.thisObject, param.args);
                 String fake = fakeFor(key);
                 if (fake != null) {
                     return fake;
                 }
+                String original = (String) XposedBridge.invokeOriginalMethod(
+                        param.method, param.thisObject, param.args);
                 return original == null ? def : original;
             }
         };
@@ -286,7 +305,10 @@ public class MainHook implements IXposedHookLoadPackage {
         char c = key.charAt(len);
         if (c != '.' && c != ',') return false;
         if (key.length() == len + 1) return false;
-        char d = key.charAt(len + 1);
-        return d >= '0' && d <= '9';
+        for (int i = len + 1; i < key.length(); i++) {
+            char d = key.charAt(i);
+            if (d < '0' || d > '9') return false;
+        }
+        return true;
     }
 }

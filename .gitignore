@@ -7,6 +7,7 @@ captures
 .externalNativeBuild
 .cxx
 local.properties
+.claude/settings.local.json
 
 # Reverse-engineering scratch dir (Maps APK dump)
 /maps_apks/

@@ -50,6 +50,7 @@ of the repository.
 Pushing a `v*` tag runs the GitHub release job. Configure these repository
 secrets first: `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`,
 `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`, and `RELEASE_APK_CERT_SHA256`.
+The release job stops before building if any required secret is absent.
 
 ## Install
 

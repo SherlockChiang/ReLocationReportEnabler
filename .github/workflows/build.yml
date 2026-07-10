@@ -109,7 +109,8 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
-          ACTUAL_CERT=$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2}')
+          ACTUAL_CERT=$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/certificate SHA-256 digest:/ {print $2; exit}')
+          test -n "$ACTUAL_CERT"
           test "$(printf '%s' "$ACTUAL_CERT" | tr -d ':' | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$RELEASE_APK_CERT_SHA256" | tr -d ':' | tr '[:upper:]' '[:lower:]')"
 
       - name: Publish GitHub release

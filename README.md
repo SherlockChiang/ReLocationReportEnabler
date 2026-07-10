@@ -52,6 +52,16 @@ secrets first: `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`,
 `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`, and `RELEASE_APK_CERT_SHA256`.
 The release job stops before building if any required secret is absent.
 
+On Windows, create a new keystore and configure all five secrets interactively:
+
+```powershell
+.\scripts\setup-release-signing.ps1
+```
+
+The script requires `keytool`, an authenticated `gh` CLI, and a remote named
+`origin` pointing to GitHub. It creates a PKCS12 keystore in the user profile
+by default and never writes its passwords to the repository.
+
 ## Install
 
 1. Install the APK with `adb install` (or any installer).

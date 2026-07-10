@@ -15,12 +15,10 @@ fun String.execute(currentWorkingDir: File = file("./")): String {
 }
 
 val gitCommitCount = "git rev-list HEAD --count".execute().toInt()
-val gitCommitHash = "git rev-parse --verify --short HEAD".execute()
 
 val verName by extra("v1")
 val verCode by extra(gitCommitCount)
-val commitHash by extra(gitCommitHash)
 
 tasks.register("Delete", Delete::class) {
-    delete(rootProject.buildDir)
+    delete(rootProject.layout.buildDirectory)
 }

@@ -14,6 +14,14 @@ val hasReleaseSigning = listOf(
     releaseKeyAlias,
     releaseKeyPassword,
 ).all { !it.isNullOrBlank() }
+val requireReleaseSigning = providers.environmentVariable("REQUIRE_RELEASE_SIGNING")
+    .map(String::toBoolean)
+    .orElse(false)
+    .get()
+
+if (requireReleaseSigning && !hasReleaseSigning) {
+    error("Release signing is required but one or more RELEASE_* environment variables are missing")
+}
 
 android {
     namespace = "io.github.timeline_unlocker.xposed"

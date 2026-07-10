@@ -47,6 +47,10 @@ Without those variables, `assembleRelease` produces an unsigned APK suitable
 for build verification only. Keep the release keystore and its passwords out
 of the repository.
 
+Pushing a `v*` tag runs the GitHub release job. Configure these repository
+secrets first: `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`,
+`RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`, and `RELEASE_APK_CERT_SHA256`.
+
 ## Install
 
 1. Install the APK with `adb install` (or any installer).

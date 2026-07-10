@@ -97,22 +97,23 @@ public class MainHook implements IXposedHookLoadPackage {
      * 用 thread-local 守卫避免 getLatitude/getLongitude 互相递归。
      */
     private void hookLocationGcj02() {
-        final ThreadLocal<Boolean> inHook = new ThreadLocal<>();
+        final ThreadLocal<LocationTransformState> state =
+                ThreadLocal.withInitial(LocationTransformState::new);
 
         XC_MethodHook latHook = new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
-                if (Boolean.TRUE.equals(inHook.get())) return;
-                inHook.set(Boolean.TRUE);
+                LocationTransformState current = state.get();
+                if (current.inHook) return;
+                current.inHook = true;
                 try {
                     Location loc = (Location) param.thisObject;
                     double lat = (Double) param.getResult();
                     double lng = loc.getLongitude();
-                    if (CoordTransform.isInChina(lat, lng)) {
-                        param.setResult(CoordTransform.wgs84ToGcj02(lat, lng)[0]);
-                    }
+                    current.update(loc, lat, lng);
+                    param.setResult(current.transformed[0]);
                 } finally {
-                    inHook.set(Boolean.FALSE);
+                    current.inHook = false;
                 }
             }
         };
@@ -120,17 +121,17 @@ public class MainHook implements IXposedHookLoadPackage {
         XC_MethodHook lngHook = new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
-                if (Boolean.TRUE.equals(inHook.get())) return;
-                inHook.set(Boolean.TRUE);
+                LocationTransformState current = state.get();
+                if (current.inHook) return;
+                current.inHook = true;
                 try {
                     Location loc = (Location) param.thisObject;
                     double lng = (Double) param.getResult();
                     double lat = loc.getLatitude();
-                    if (CoordTransform.isInChina(lat, lng)) {
-                        param.setResult(CoordTransform.wgs84ToGcj02(lat, lng)[1]);
-                    }
+                    current.update(loc, lat, lng);
+                    param.setResult(current.transformed[1]);
                 } finally {
-                    inHook.set(Boolean.FALSE);
+                    current.inHook = false;
                 }
             }
         };
@@ -141,6 +142,28 @@ public class MainHook implements IXposedHookLoadPackage {
             log("Location GCJ-02 transform hooks installed");
         } catch (Throwable t) {
             log("hook Location lat/lng failed: %s", t);
+        }
+    }
+
+    private static final class LocationTransformState {
+        private final double[] transformed = new double[2];
+        private Location location;
+        private double lat;
+        private double lng;
+        private boolean valid;
+        private boolean inHook;
+
+        private void update(Location location, double lat, double lng) {
+            if (valid && this.location == location
+                    && Double.compare(this.lat, lat) == 0
+                    && Double.compare(this.lng, lng) == 0) {
+                return;
+            }
+            this.location = location;
+            this.lat = lat;
+            this.lng = lng;
+            CoordTransform.wgs84ToGcj02(lat, lng, transformed);
+            valid = true;
         }
     }
 

@@ -13,13 +13,29 @@ public final class CoordTransform {
 
     /** 粗略中国大陆边界判断；境外不做转换。 */
     public static boolean isInChina(double lat, double lng) {
-        return lng >= 72.004 && lng <= 137.8347
+        return Double.isFinite(lat) && Double.isFinite(lng)
+                && lat >= -90.0 && lat <= 90.0
+                && lng >= 72.004 && lng <= 137.8347
                 && lat >= 0.8293 && lat <= 55.8271;
     }
 
     /** 返回长度为 2 的数组 [latitude, longitude]，已转换为 GCJ-02。 */
     public static double[] wgs84ToGcj02(double lat, double lng) {
-        if (!isInChina(lat, lng)) return new double[]{lat, lng};
+        double[] result = new double[2];
+        wgs84ToGcj02(lat, lng, result);
+        return result;
+    }
+
+    /** 将转换结果写入 result[0..1]，用于避免热路径临时数组分配。 */
+    public static void wgs84ToGcj02(double lat, double lng, double[] result) {
+        if (result == null || result.length < 2) {
+            throw new IllegalArgumentException("result must contain at least two elements");
+        }
+        if (!isInChina(lat, lng)) {
+            result[0] = lat;
+            result[1] = lng;
+            return;
+        }
         double dLat = transformLat(lng - 105.0, lat - 35.0);
         double dLng = transformLng(lng - 105.0, lat - 35.0);
         double radLat = lat / 180.0 * Math.PI;
@@ -28,7 +44,8 @@ public final class CoordTransform {
         double sqrtMagic = Math.sqrt(magic);
         dLat = (dLat * 180.0) / ((A * (1 - EE)) / (magic * sqrtMagic) * Math.PI);
         dLng = (dLng * 180.0) / (A / sqrtMagic * Math.cos(radLat) * Math.PI);
-        return new double[]{lat + dLat, lng + dLng};
+        result[0] = lat + dLat;
+        result[1] = lng + dLng;
     }
 
     private static double transformLat(double x, double y) {

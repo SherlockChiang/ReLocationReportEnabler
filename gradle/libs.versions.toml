@@ -1,9 +1,11 @@
 [versions]
 agp = "8.11.0"
 xposed = "82"
+junit = "4.13.2"
 
 [libraries]
 xposed-api = { group = "de.robv.android.xposed", name = "api", version.ref = "xposed" }
+junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]
 agp-app = { id = "com.android.application", version.ref = "agp" }

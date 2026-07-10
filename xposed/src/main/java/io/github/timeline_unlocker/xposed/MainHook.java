@@ -262,7 +262,7 @@ public class MainHook implements IXposedHookLoadPackage {
             protected Object replaceHookedMethod(MethodHookParam param) throws Throwable {
                 String key = (String) param.args[0];
                 String def = param.args.length > 1 ? (String) param.args[1] : "";
-                String fake = fakeFor(key);
+                String fake = SpoofedSystemProperties.valueFor(key, FAKE_MCC_MNC, FAKE_ISO);
                 if (fake != null) {
                     return fake;
                 }
@@ -284,31 +284,4 @@ public class MainHook implements IXposedHookLoadPackage {
         }
     }
 
-    private static String fakeFor(String key) {
-        if (key == null) return null;
-        if (startsWithKey(key, "gsm.sim.operator.numeric")
-                || startsWithKey(key, "gsm.operator.numeric")) {
-            return FAKE_MCC_MNC;
-        }
-        if (startsWithKey(key, "gsm.sim.operator.iso-country")
-                || startsWithKey(key, "gsm.operator.iso-country")) {
-            return FAKE_ISO;
-        }
-        return null;
-    }
-
-    /** 精确匹配，或 prefix 后跟 .N / ,N 卡槽后缀。 */
-    private static boolean startsWithKey(String key, String prefix) {
-        if (!key.startsWith(prefix)) return false;
-        int len = prefix.length();
-        if (key.length() == len) return true;
-        char c = key.charAt(len);
-        if (c != '.' && c != ',') return false;
-        if (key.length() == len + 1) return false;
-        for (int i = len + 1; i < key.length(); i++) {
-            char d = key.charAt(i);
-            if (d < '0' || d > '9') return false;
-        }
-        return true;
-    }
 }

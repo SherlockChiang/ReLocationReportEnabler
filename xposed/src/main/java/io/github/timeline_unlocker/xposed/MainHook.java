@@ -83,7 +83,7 @@ public class MainHook implements IXposedHookLoadPackage {
                 }
                 double lat = latE7 / 1e7;
                 double lng = lngE7 / 1e7;
-                if (!CoordTransform.isInChina(lat, lng)) return;
+                if (!CoordTransform.shouldApplyGcj02(lat, lng)) return;
                 double[] gcj = CoordTransform.wgs84ToGcj02(lat, lng);
                 args[0] = (int) Math.round(gcj[0] * 1e7);
                 args[1] = (int) Math.round(gcj[1] * 1e7);

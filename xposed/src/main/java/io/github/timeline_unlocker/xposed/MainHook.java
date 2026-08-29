@@ -18,7 +18,10 @@ public class MainHook implements IXposedHookLoadPackage {
     private static final String FAKE_MCC_MNC = "310030";
     private static final int FAKE_MCC = 310;
     private static final int FAKE_MNC = 30;
+    // TelephonyManager.getSimCountryIso 等在 AOSP 中返回小写；
+    // SubscriptionInfo.getCountryIso 的契约是大写（"the country iso in upper case"）。
     private static final String FAKE_ISO = "us";
+    private static final String FAKE_ISO_SUBSCRIPTION = "US";
 
     private static void log(String fmt, Object... args) {
         XposedBridge.log("[" + TAG + "] " + String.format(fmt, args));
@@ -116,8 +119,8 @@ public class MainHook implements IXposedHookLoadPackage {
                     Location loc = (Location) param.thisObject;
                     double lat = (Double) param.getResult();
                     double lng = loc.getLongitude();
-                    current.update(loc, lat, lng);
-                    param.setResult(current.transformed[0]);
+                    current.cache.update(loc, lat, lng);
+                    param.setResult(current.cache.transformedLatitude());
                 } finally {
                     current.inHook = false;
                 }
@@ -134,8 +137,8 @@ public class MainHook implements IXposedHookLoadPackage {
                     Location loc = (Location) param.thisObject;
                     double lng = (Double) param.getResult();
                     double lat = loc.getLatitude();
-                    current.update(loc, lat, lng);
-                    param.setResult(current.transformed[1]);
+                    current.cache.update(loc, lat, lng);
+                    param.setResult(current.cache.transformedLongitude());
                 } finally {
                     current.inHook = false;
                 }
@@ -152,25 +155,8 @@ public class MainHook implements IXposedHookLoadPackage {
     }
 
     private static final class LocationTransformState {
-        private final double[] transformed = new double[2];
-        private Location location;
-        private double lat;
-        private double lng;
-        private boolean valid;
+        private final LocationTransformCache cache = new LocationTransformCache();
         private boolean inHook;
-
-        private void update(Location location, double lat, double lng) {
-            if (valid && this.location == location
-                    && Double.compare(this.lat, lat) == 0
-                    && Double.compare(this.lng, lng) == 0) {
-                return;
-            }
-            this.location = location;
-            this.lat = lat;
-            this.lng = lng;
-            CoordTransform.wgs84ToGcj02(lat, lng, transformed);
-            valid = true;
-        }
     }
 
     private static XC_MethodReplacement constReplacement(final Object value) {
@@ -214,7 +200,7 @@ public class MainHook implements IXposedHookLoadPackage {
             return;
         }
 
-        hookAllReturning(subInfo, "getCountryIso", FAKE_ISO);
+        hookAllReturning(subInfo, "getCountryIso", FAKE_ISO_SUBSCRIPTION);
         hookAllReturning(subInfo, "getMccString", "310");
         hookAllReturning(subInfo, "getMncString", "030");
         hookAllReturning(subInfo, "getMcc", FAKE_MCC);
@@ -235,7 +221,7 @@ public class MainHook implements IXposedHookLoadPackage {
                         hooked, clazz.getSimpleName(), name, value);
             }
         } catch (Throwable t) {
-            // 没这个方法就跳过
+            log("hooking %s.%s failed: %s", clazz.getSimpleName(), name, t);
         }
     }
 

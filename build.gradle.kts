@@ -20,6 +20,6 @@ subprojects {
     }
 }
 
-tasks.register("Delete", Delete::class) {
+tasks.register("clean", Delete::class) {
     delete(rootProject.layout.buildDirectory)
 }

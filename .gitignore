@@ -11,3 +11,4 @@ local.properties
 
 # Reverse-engineering scratch dir (Maps APK dump)
 /maps_apks/
+/.mimosa/

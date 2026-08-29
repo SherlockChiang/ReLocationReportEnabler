@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # gradle 依赖受 verification-metadata.xml 约束：dependabot 合并前需要
+  # 手动补校验和（./gradlew --write-verification-metadata sha256 gradle --export-keys 后提交更新）。
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

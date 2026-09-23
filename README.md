@@ -89,8 +89,30 @@ dot drifts off the China map tiles by a few hundred meters.
 
 To compensate, the Maps process additionally hooks
 `Location.getLatitude()` / `Location.getLongitude()` and applies the public
-WGS-84 &rarr; GCJ-02 transform when the coordinate falls inside the China
-bounding box. The dot then realigns with the GCJ-02 tiles.
+WGS-84 &rarr; GCJ-02 transform when the coordinate falls inside mainland
+China's GCJ-02 coverage. Hong Kong, Macao, and Taiwan are excluded because
+Maps does not need this compensation there. The dot then realigns with the
+GCJ-02 tiles without introducing an offset in those regions.
+
+### Regional boundary data
+
+The module uses simplified OpenStreetMap administrative-boundary polygons for
+Hong Kong, Macao, and Taiwan rather than the broad GCJ-02 bounding box. The
+generated boundary source is checked in, so builds never make a network request.
+It is an explicit, maintainable exclusion policy, not a claim that Google Maps'
+internal tile coverage exactly follows administrative boundaries.
+
+The boundary source, ODbL attribution, and fixed OpenStreetMap relation IDs are
+in [`NOTICE`](NOTICE). To refresh the generated data, use Node.js 18 or later:
+
+```bash
+node scripts/generate-region-boundaries.mjs
+git diff -- xposed/src/main/java/io/github/timeline_unlocker/xposed/RegionBoundary.java
+```
+
+Review any boundary diff before committing it. The generator requests geometry
+simplified to `0.00005` degrees (roughly 5 m) and writes it to
+`RegionBoundary.java`.
 
 This compensation is **only** installed in `com.google.android.apps.maps`;
 GMS / GSF still see the original WGS-84 values, which is what Location

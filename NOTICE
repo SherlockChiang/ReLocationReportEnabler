@@ -1,0 +1,19 @@
+This project includes derived administrative-boundary data from OpenStreetMap
+contributors, obtained through the Nominatim service. The generated source is
+`xposed/src/main/java/io/github/timeline_unlocker/xposed/RegionBoundary.java`.
+It is used only to decide where this module must not apply its GCJ-02
+compensation. The data is available under the Open Database License (ODbL) 1.0.
+
+Copyright: OpenStreetMap contributors
+License: https://opendatacommons.org/licenses/odbl/1-0/
+Attribution: https://www.openstreetmap.org/copyright
+
+Source relations, fetched by `scripts/generate-region-boundaries.mjs` with a
+geometry-simplification threshold of 0.00005 degrees:
+
+- Hong Kong: https://www.openstreetmap.org/relation/20044132
+- Macao: https://www.openstreetmap.org/relation/1867188
+- Taiwan: https://www.openstreetmap.org/relation/449220
+
+Refreshes must be reviewed before committing because OpenStreetMap data can
+change over time.

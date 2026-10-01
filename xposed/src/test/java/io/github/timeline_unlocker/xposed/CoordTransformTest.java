@@ -39,9 +39,44 @@ public class CoordTransformTest {
     }
 
     @Test
-    public void appliesCompensationAtMainlandBoundingBoxEdges() {
-        assertTrue(CoordTransform.shouldApplyGcj02(0.8293, 72.004));
-        assertTrue(CoordTransform.shouldApplyGcj02(55.8271, 137.8347));
+    public void leavesForeignCoordinatesInsideOldBoundingBoxUnchanged() {
+        double[][] coordinates = {
+                {13.7563, 100.5018}, // Bangkok
+                {12.9236, 100.8825}, // Pattaya
+                {21.0285, 105.8542}, // Hanoi
+                {17.9757, 102.6331}, // Vientiane
+                {16.8409, 96.1735}, // Yangon
+                {27.7172, 85.3240}, // Kathmandu
+                {28.6139, 77.2090}, // New Delhi
+                {47.9184, 106.9177}, // Ulaanbaatar
+                {43.1332, 131.9113}, // Vladivostok
+                {37.5665, 126.9780}, // Seoul
+                {35.6762, 139.6503}, // Tokyo
+                {0.8293, 72.004}, // Old box southwest corner, not mainland China
+                {55.8271, 137.8347}, // Old box northeast corner, not mainland China
+        };
+        for (double[] coordinate : coordinates) {
+            assertFalse(CoordTransform.shouldApplyGcj02(coordinate[0], coordinate[1]));
+            assertArrayEquals(coordinate,
+                    CoordTransform.wgs84ToGcj02(coordinate[0], coordinate[1]), 0.0);
+        }
+    }
+
+    @Test
+    public void keepsCompensationAcrossMainlandChina() {
+        double[][] coordinates = {
+                {30.5728, 104.0668}, // Chengdu
+                {43.8256, 87.6168}, // Urumqi
+                {29.6520, 91.1721}, // Lhasa
+                {20.0440, 110.1999}, // Haikou
+                {18.2528, 109.5119}, // Sanya
+                {52.9759171, 122.7933319}, // Mohe (OSM relation 2754957)
+                {25.0210, 98.4970}, // Ruili, near Myanmar
+        };
+        for (int i = 0; i < coordinates.length; i++) {
+            assertTrue("Mainland coordinate: " + coordinates[i][0] + ", " + coordinates[i][1],
+                    CoordTransform.shouldApplyGcj02(coordinates[i][0], coordinates[i][1]));
+        }
     }
 
     @Test

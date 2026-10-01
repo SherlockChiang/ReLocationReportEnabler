@@ -11,12 +11,12 @@ const SOURCES = [
   { name: "TAIWAN", relation: "R449220" },
 ];
 
-async function fetchBoundary({ relation }) {
+async function fetchBoundary({ relation, threshold = THRESHOLD }) {
   const url = new URL("https://nominatim.openstreetmap.org/lookup");
   url.searchParams.set("osm_ids", relation);
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("polygon_geojson", "1");
-  url.searchParams.set("polygon_threshold", THRESHOLD);
+  url.searchParams.set("polygon_threshold", threshold);
 
   const response = await fetch(url, {
     headers: {
@@ -60,13 +60,42 @@ function polygonBounds(geometry) {
   });
 }
 
-const geometries = await Promise.all(SOURCES.map(fetchBoundary));
+// Separate small chunk classes keep Java initializers and constant pools below
+// the JVM's 64 KiB limits without coarsening the country boundary further.
+function javaChunkedMultiPolygon(geometry) {
+  const declarations = [];
+  const polygons = asMultiPolygon(geometry).map((polygon) =>
+    `        {${polygon.map((ring) => {
+      const chunks = [];
+      for (let i = 0; i < ring.length; i += 500) {
+        const name = `ChinaChunk${declarations.length}`;
+        const points = ring.slice(i, i + 500)
+          .map(([lng, lat]) => `{${javaNumber(lat)}, ${javaNumber(lng)}}`).join(", ");
+        declarations.push(`    private static final class ${name} {
+        static final double[][] POINTS = {${points}};
+    }`);
+        chunks.push(`${name}.POINTS`);
+      }
+      return `join(${chunks.join(", ")})`;
+    }).join(", ")}}`
+  ).join(",\n");
+  return { polygons, declarations: declarations.join("\n\n") };
+}
+
+// Nominatim's public service requires at most one request per second.
+const geometries = [];
+for (const source of SOURCES) {
+  geometries.push(await fetchBoundary(source));
+  await new Promise((resolve) => setTimeout(resolve, 1100));
+}
+const china = await fetchBoundary({ relation: "R270056", threshold: "0.001" });
+const chinaSource = javaChunkedMultiPolygon(china);
 const generated = `package io.github.timeline_unlocker.xposed;
 
 /**
  * Administrative boundaries generated from OpenStreetMap through Nominatim.
- * Source relations: Hong Kong R20044132, Macao R1867188, Taiwan R449220.
- * Geometry is simplified by 0.00005 degrees for size. See NOTICE and
+ * Source relations: China R270056, Hong Kong R20044132, Macao R1867188, Taiwan R449220.
+ * China is simplified by 0.001 degrees; exclusions by 0.00005 degrees. See NOTICE and
  * scripts/generate-region-boundaries.mjs for attribution and regeneration.
  */
 final class RegionBoundary {
@@ -89,7 +118,32 @@ ${javaMultiPolygon(geometries[2])}
     private static final double[] TAIWAN_BOUNDS = {${bounds(geometries[2]).map(javaNumber).join(", ")}};
     private static final double[][] TAIWAN_POLYGON_BOUNDS = {${polygonBounds(geometries[2]).map((value) => `{${value.map(javaNumber).join(", ")}}`).join(", ")}};
 
+    private static final double[][][][] CHINA = {
+${chinaSource.polygons}
+    };
+    private static final double[] CHINA_BOUNDS = {${bounds(china).map(javaNumber).join(", ")}};
+    private static final double[][] CHINA_POLYGON_BOUNDS = {${polygonBounds(china).map((value) => `{${value.map(javaNumber).join(", ")}}`).join(", ")}};
+
+${chinaSource.declarations}
+
     private RegionBoundary() {}
+
+    static boolean isMainlandChina(double lat, double lng) {
+        return contains(lat, lng, CHINA_BOUNDS, CHINA_POLYGON_BOUNDS, CHINA)
+                && !isExcludedWgs84Region(lat, lng);
+    }
+
+    private static double[][] join(double[][]... chunks) {
+        int length = 0;
+        for (double[][] chunk : chunks) length += chunk.length;
+        double[][] result = new double[length][];
+        int offset = 0;
+        for (double[][] chunk : chunks) {
+            System.arraycopy(chunk, 0, result, offset, chunk.length);
+            offset += chunk.length;
+        }
+        return result;
+    }
 
     static boolean isExcludedWgs84Region(double lat, double lng) {
         return contains(lat, lng, HONG_KONG_BOUNDS, HONG_KONG_POLYGON_BOUNDS, HONG_KONG)

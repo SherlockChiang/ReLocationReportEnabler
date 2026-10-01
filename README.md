@@ -96,11 +96,14 @@ GCJ-02 tiles without introducing an offset in those regions.
 
 ### Regional boundary data
 
-The module uses simplified OpenStreetMap administrative-boundary polygons for
-Hong Kong, Macao, and Taiwan rather than the broad GCJ-02 bounding box. The
-generated boundary source is checked in, so builds never make a network request.
-It is an explicit, maintainable exclusion policy, not a claim that Google Maps'
-internal tile coverage exactly follows administrative boundaries.
+The module first rejects coordinates outside the traditional bounding box,
+then requires containment in the OpenStreetMap China administrative boundary
+and excludes Hong Kong, Macao, and Taiwan. The box alone is not sufficient:
+it also includes Thailand, Vietnam, Mongolia, and other foreign regions.
+The generated boundary source is checked in; neither builds nor runtime
+perform boundary network requests. This is an explicit, maintainable policy,
+not a claim that Google Maps' internal tile coverage exactly follows
+administrative boundaries.
 
 The boundary source, ODbL attribution, and fixed OpenStreetMap relation IDs are
 in [`NOTICE`](NOTICE). To refresh the generated data, use Node.js 18 or later:
@@ -110,9 +113,12 @@ node scripts/generate-region-boundaries.mjs
 git diff -- xposed/src/main/java/io/github/timeline_unlocker/xposed/RegionBoundary.java
 ```
 
-Review any boundary diff before committing it. The generator requests geometry
-simplified to `0.00005` degrees (roughly 5 m) and writes it to
-`RegionBoundary.java`.
+Review any boundary diff before committing it. The generator requests China
+geometry simplified to `0.001` degrees (roughly 110 m in latitude), retaining
+`0.00005` degrees (roughly 5 m) for Hong Kong, Macao, and Taiwan. It writes
+`RegionBoundary.java`; country coordinates are split into small generated
+classes to stay within JVM initializer and constant-pool limits. Public
+Nominatim requests are spaced to respect its one-request-per-second policy.
 
 This compensation is **only** installed in `com.google.android.apps.maps`;
 GMS / GSF still see the original WGS-84 values, which is what Location
@@ -150,11 +156,14 @@ GCJ-02 values. To verify on your device: stand at a known location, manually
 create/save a Timeline entry, then check whether the saved point aligns with
 reality after a sync/export round-trip.
 
-**The GCJ-02 transform uses the public approximation** with a coarse China
-bounding box. Accuracy degrades near box edges (Hong Kong, Macau, Taiwan
-areas are inside the box but outside the well-calibrated region), and if a
-Chinese ROM's location stack already delivers GCJ-02 coordinates, the
-compensation would double-offset those locations.
+**The GCJ-02 transform uses the public approximation.** Its coverage is gated
+by simplified administrative polygons, not verified Google tile boundaries.
+Points close to land borders, coasts, disputed areas, or the exact polygon
+edge can be classified differently from Maps; the China simplification is
+approximately 110 m in latitude, not a guaranteed accuracy bound. The
+traditional bounding box remains an outer cap, so this change does not expand
+compensation to remote offshore regions. If a Chinese ROM's location stack
+already delivers GCJ-02 coordinates, compensation would double-offset them.
 
 ## Troubleshooting
 

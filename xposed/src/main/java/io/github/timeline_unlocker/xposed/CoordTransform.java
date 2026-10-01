@@ -14,16 +14,16 @@ public final class CoordTransform {
     /**
      * Whether Maps needs a WGS-84 -> GCJ-02 coordinate compensation here.
      *
-     * The traditional GCJ-02 bounding box also contains Hong Kong, Macao, and
-     * Taiwan. Google Maps uses WGS-84 tiles in those regions, so applying the
-     * mainland compensation there shifts the location by several hundred meters.
+     * The traditional bounding box also contains foreign countries. Use it only
+     * as a quick rejection, then require the China boundary and retain the
+     * Hong Kong, Macao, and Taiwan exclusions.
      */
     public static boolean shouldApplyGcj02(double lat, double lng) {
         return Double.isFinite(lat) && Double.isFinite(lng)
                 && lat >= -90.0 && lat <= 90.0
                 && lng >= 72.004 && lng <= 137.8347
                 && lat >= 0.8293 && lat <= 55.8271
-                && !RegionBoundary.isExcludedWgs84Region(lat, lng);
+                && RegionBoundary.isMainlandChina(lat, lng);
     }
 
     /** 返回长度为 2 的数组 [latitude, longitude]，已转换为 GCJ-02。 */
